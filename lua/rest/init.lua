@@ -61,6 +61,7 @@ end
 
 function M.setup()
   local group = 'taybart.rest'
+
   vim.api.nvim_create_augroup(group, {})
   vim.api.nvim_create_autocmd('BufRead,BufNewFile', {
     group = group,
