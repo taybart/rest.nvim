@@ -2,15 +2,13 @@ local M = {}
 local rest_cmd = '!rest -nc'
 
 function M.block_under_cursor()
-  local ts_utils = require('nvim-treesitter.ts_utils')
   local ts_query = require('nvim-treesitter.query')
   local parsers = require('nvim-treesitter.parsers')
   local locals = require('nvim-treesitter.locals')
 
   local surrogate_language = 'hcl'
 
-  local ft_to_parser = parsers.filetype_to_parsername
-  ft_to_parser.rest = surrogate_language
+  vim.treesitter.language.register.rest = surrogate_language
   local query = [[(block (identifier) @requests (#eq? @requests "request")) @block]]
   local success, parsed_query = pcall(function()
     return vim.treesitter.parse_query(surrogate_language, query)
