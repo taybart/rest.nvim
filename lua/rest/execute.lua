@@ -11,7 +11,7 @@ function M.block_under_cursor()
   vim.treesitter.language.register('rest', surrogate_language)
   local query = [[(block (identifier) @requests (#eq? @requests "request")) @block]]
   local success, parsed_query = pcall(function()
-    return vim.treesitter.query.parse_query(surrogate_language, query)
+    return vim.treesitter.query.parse(surrogate_language, query)
   end)
   if not success then
     error('ts query parse failure')
