@@ -92,11 +92,11 @@ function M.show_result(result, actions)
     title_pos = 'center',
   })
 
-  vim.api.nvim_win_set_option(win, 'cursorline', true)
-  vim.api.nvim_win_set_option(win, 'wrap', false)
+  vim.api.nvim_set_option_value('cursorline', true, { win = win })
+  vim.api.nvim_set_option_value('wrap', false, { win = win })
 
   -- vim.api.nvim_buf_set_option(buf, 'modifiable', false)
-  vim.api.nvim_buf_set_option(buf, 'bufhidden', 'wipe')
+  vim.api.nvim_set_option_value('bufhidden', 'wipe', { buf = buf })
 
   local function close_window()
     if vim.api.nvim_win_is_valid(win) then
@@ -117,9 +117,11 @@ function M.show_result(result, actions)
   vim.keymap.set('n', '<Esc>', close_window, { buffer = buf })
   vim.keymap.set('n', '<CR>', close_window, { buffer = buf })
 
-  vim.api.nvim_buf_add_highlight(buf, -1, 'Title', 0, 0, -1)
+  local ns = vim.api.nvim_create_namespace('rest-result')
+
+  vim.hl.range(buf, ns, 'Title', { 0, 0 }, { 0, -1 })
   for i = 2, #actions + 2 do
-    vim.api.nvim_buf_add_highlight(buf, -1, 'Special', i, 0, 3)
+    vim.hl.range(buf, ns, 'Special', { i, 0 }, { i, 3 })
   end
 
   return win, buf
