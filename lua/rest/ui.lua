@@ -62,11 +62,13 @@ function M.choose(opts, choices, cb)
 end
 
 function M.show_result(result, actions)
-  local output = vim.split(result, '\n', { plain = true })
-  if #output == 1 and output[1] == '' then
+  -- check if result is blank, if so, just pop a notification
+  if result:gsub('%s+', '') == '' then
     vim.notify('request sent')
     return
   end
+
+  local output = vim.split(result, '\n', { plain = true })
 
   local lines = {}
   vim.list_extend(lines, output)
