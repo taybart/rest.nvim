@@ -128,7 +128,7 @@ function M.run_cmd(args)
   --- @diagnostic disable-next-line: undefined-field
   local result = vim.system(cmd, { text = true }):wait()
   if result.code ~= 0 then
-    vim.notify(result.stdout, vim.log.levels.ERROR)
+    vim.notify(result.stderr .. result.stdout, vim.log.levels.ERROR)
     return
   end
   return result.stdout
