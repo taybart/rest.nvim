@@ -28,41 +28,45 @@ function M.choose(opts, choices, cb)
     end)
   end
   pickers
-      .new({
-        layout_config = {
-          width = 0.8,
-          preview_width = 0.75,
-          preview_cutoff = 1,
-        },
-      }, {
-        prompt_title = opts.title,
-        finder = finders.new_table({
-          results = assert(choices or 'No table provided'),
-          entry_maker = function(entry)
-            return {
-              value = entry,
-              display = entry:match('^([^:]*)'),
-              ordinal = entry,
-            }
-          end,
-        }),
-        attach_mappings = function(buf, map)
-          map('i', '<CR>', function()
-            choose(buf)
-          end)
-          map('n', '<CR>', function()
-            choose(buf)
-          end)
-          return true
+    .new({
+      layout_config = {
+        width = 0.8,
+        preview_width = 0.75,
+        preview_cutoff = 1,
+      },
+    }, {
+      prompt_title = opts.title,
+      finder = finders.new_table({
+        results = assert(choices or 'No table provided'),
+        entry_maker = function(entry)
+          return {
+            value = entry,
+            display = entry:match('^([^:]*)'),
+            ordinal = entry,
+          }
         end,
-      })
-      :find()
+      }),
+      attach_mappings = function(buf, map)
+        map('i', '<CR>', function()
+          choose(buf)
+        end)
+        map('n', '<CR>', function()
+          choose(buf)
+        end)
+        return true
+      end,
+    })
+    :find()
 
   -- end telescope
 end
 
 function M.show_result(result, actions)
   local output = vim.split(result, '\n', { plain = true })
+  if #output == 1 and output[1] == '' then
+    vim.notify('request sent')
+    return
+  end
 
   local lines = {}
   vim.list_extend(lines, output)
