@@ -39,6 +39,10 @@ function M.do_labels()
       table.insert(labels, label)
     end
   end
+  if #labels == 0 then
+    vim.notify('no request blocks found', vim.log.levels.WARN)
+    return
+  end
   ui.choose({ title = 'what should we run?' }, labels, function(label)
     M.run({ type = 'label', label = label })
   end)
@@ -56,7 +60,7 @@ function M.block_under_cursor()
   local success, parsed_query = pcall(function()
     return vim.treesitter.query.parse(surrogate_language, query)
   end)
-  if not success then
+  if not success or not parsed_query then
     error('ts query parse failure')
     return nil
   end

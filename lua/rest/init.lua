@@ -2,11 +2,6 @@ local M = {}
 
 local execute = require('rest.execute')
 
-local function has_plenary()
-  local exists, _ = pcall(require, 'plenary')
-  return exists
-end
-
 function M.setup()
   local group = 'taybart.rest'
 
@@ -35,10 +30,6 @@ function M.setup()
       vim.keymap.set('n', '<c-t>', execute.file, {})
     end,
   })
-
-  if has_plenary() then
-    require('plenary.filetype').add_file('rest')
-  end
 end
 
 return M
