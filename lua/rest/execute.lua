@@ -4,7 +4,7 @@ local M = {
 }
 local ui = require('rest.ui')
 function M.register_ts_query()
-  vim.treesitter.language.register('rest', M.surrogate_language)
+  vim.treesitter.language.register(M.surrogate_language, 'rest')
 
   local query = [[
     (block
@@ -15,10 +15,8 @@ function M.register_ts_query()
   local success, parsed_query = pcall(function()
     return vim.treesitter.query.parse(M.surrogate_language, query)
   end)
-  -- always restore ts language
-  vim.treesitter.language.register(M.surrogate_language, M.surrogate_language)
   if not success then
-    error('ts query parse failure')
+    error('ts query parse failure' .. parsed_query)
     return nil
   end
   M.parsed_query = parsed_query
@@ -35,7 +33,7 @@ function M.do_labels()
     local name = M.parsed_query.captures[i]
     if name == 'label' then
       local label = vim.treesitter.get_node_text(node, 0)
-      label = label:gsub('"(.*)"', '%1')
+      label = label:gsub('"(.*)"', '%1') -- remove quotes
       table.insert(labels, label)
     end
   end
@@ -44,6 +42,9 @@ function M.do_labels()
     return
   end
   ui.choose({ title = 'what should we run?' }, labels, function(label)
+    if not label then
+      return
+    end
     M.run({ type = 'label', label = label })
   end)
 end
@@ -144,13 +145,13 @@ function M.run(args)
     return
   end
   ui.show_result(result, {
-    -- ['Y'] = {
-    --   description = 'Copy result',
-    --   callback = function()
-    --     vim.fn.setreg('+', result)
-    --     vim.notify('Copied to clipboard')
-    --   end,
-    -- },
+    ['Y'] = {
+      description = 'Copy result',
+      callback = function()
+        vim.fn.setreg('+', result)
+        vim.notify('Copied to clipboard')
+      end,
+    },
   })
 end
 

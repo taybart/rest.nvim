@@ -4,61 +4,14 @@ function M.choose(opts, choices, cb)
   if not opts.title then
     opts.title = 'Choose'
   end
-  if not package.loaded['telescope'] then
-    vim.ui.select(choices, {
-      prompt = opts.title,
-      format_item = function(s)
-        return s
-      end,
-    }, function(choice)
-      cb(choice)
-    end)
-  end
-  -- telescope
-  local actions = require('telescope.actions')
-  local finders = require('telescope.finders')
-  local pickers = require('telescope.pickers')
-  local action_state = require('telescope.actions.state')
-
-  local choose = function(buf)
-    actions.close(buf)
-    local result = action_state.get_selected_entry().value
-    vim.schedule(function()
-      cb(result)
-    end)
-  end
-  pickers
-    .new({
-      layout_config = {
-        width = 0.8,
-        preview_width = 0.75,
-        preview_cutoff = 1,
-      },
-    }, {
-      prompt_title = opts.title,
-      finder = finders.new_table({
-        results = assert(choices or 'No table provided'),
-        entry_maker = function(entry)
-          return {
-            value = entry,
-            display = entry:match('^([^:]*)'),
-            ordinal = entry,
-          }
-        end,
-      }),
-      attach_mappings = function(buf, map)
-        map('i', '<CR>', function()
-          choose(buf)
-        end)
-        map('n', '<CR>', function()
-          choose(buf)
-        end)
-        return true
-      end,
-    })
-    :find()
-
-  -- end telescope
+  vim.ui.select(choices, {
+    prompt = opts.title,
+    format_item = function(s)
+      return s
+    end,
+  }, function(choice)
+    cb(choice)
+  end)
 end
 
 function M.show_result(result, actions)
