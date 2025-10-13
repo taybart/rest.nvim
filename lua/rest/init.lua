@@ -3,7 +3,14 @@ local M = {}
 local execute = require('rest.execute')
 
 function M.setup()
-  vim.filetype.add({ extension = { rest = 'hcl' } })
+  -- vim.filetype.add({ extension = { rest = 'hcl' } })
+  vim.filetype.add({ extension = { rest = 'rest' } })
+  vim.api.nvim_create_autocmd('FileType', {
+    pattern = 'rest',
+    callback = function()
+      vim.api.nvim_set_option_value('syntax', 'hcl', {})
+    end,
+  })
   execute.register_ts_query()
 
   local group_id = vim.api.nvim_create_augroup('taybart.rest', {})
