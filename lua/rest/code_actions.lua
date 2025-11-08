@@ -8,9 +8,7 @@ function M.register_code_actions()
   require("code-actions").setup({
     register_keymap = false,
     name = "rest.nvim",
-    filetype = {
-      include = { "rest" },
-    },
+    filetypes = { include = { "rest" } },
     -- stylua: ignore
     actions = {
       {
