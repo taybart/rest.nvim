@@ -1,10 +1,10 @@
 local M = {
-  surrogate_language = 'hcl',
+  surrogate_language = "hcl",
   parsed_query = nil,
 }
-local ui = require('rest.ui')
+local ui = require("rest.ui")
 function M.register_ts_query()
-  vim.treesitter.language.register(M.surrogate_language, 'rest')
+  vim.treesitter.language.register(M.surrogate_language, "rest")
 
   local query = [[
     (block
@@ -16,14 +16,14 @@ function M.register_ts_query()
     return vim.treesitter.query.parse(M.surrogate_language, query)
   end)
   if not success then
-    error('ts query parse failure' .. parsed_query)
+    error("ts query parse failure" .. parsed_query)
     return nil
   end
   M.parsed_query = parsed_query
 end
 
 function M.do_labels()
-  local parsers = require('nvim-treesitter.parsers')
+  local parsers = require("nvim-treesitter.parsers")
 
   local parser = parsers.get_parser(0, M.surrogate_language)
   local root = parser:parse()[1]:root()
@@ -31,101 +31,112 @@ function M.do_labels()
   local labels = {}
   for i, node in M.parsed_query:iter_captures(root, 0, start_row, end_row) do
     local name = M.parsed_query.captures[i]
-    if name == 'label' then
+    if name == "label" then
       local label = vim.treesitter.get_node_text(node, 0)
-      label = label:gsub('"(.*)"', '%1') -- remove quotes
+      label = label:gsub('"(.*)"', "%1") -- remove quotes
       table.insert(labels, label)
     end
   end
   if #labels == 0 then
-    vim.notify('no request blocks found', vim.log.levels.WARN)
+    vim.notify("no request blocks found", vim.log.levels.WARN)
     return
   end
-  ui.choose({ title = 'what should we run?' }, labels, function(label)
+  ui.choose({ title = "what should we run?" }, labels, function(label)
     if not label then
       return
     end
-    M.run({ type = 'label', label = label })
+    M.run({ type = "label", label = label })
   end)
 end
 
 function M.block_under_cursor()
-  local ts_query = require('nvim-treesitter.query')
-  local parsers = require('nvim-treesitter.parsers')
-  local locals = require('nvim-treesitter.locals')
+  local label = M.block_label_under_cursor()
+  if label then
+    M.run({ type = "label", label = label })
+    return
+  end
+  print("no block under cursor")
+end
 
-  local surrogate_language = 'hcl'
+function M.block_label_under_cursor()
+  local buf = vim.api.nvim_get_current_buf()
+  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+  row = row - 1 -- TreeSitter uses 0-based row indexing
 
-  vim.treesitter.language.register('rest', surrogate_language)
-  local query = [[(block (identifier) @requests (#eq? @requests "request")) @block]]
-  local success, parsed_query = pcall(function()
-    return vim.treesitter.query.parse(surrogate_language, query)
-  end)
-  if not success or not parsed_query then
-    error('ts query parse failure')
+  -- Get the root node of the buffer
+  local parser = vim.treesitter.get_parser(buf, "hcl")
+  if not parser then
+    error("No parser available for hcl")
     return nil
   end
 
-  local parser = parsers.get_parser(0, surrogate_language)
   local root = parser:parse()[1]:root()
-  local start_row, _, end_row, _ = root:range()
-  local block_num = -1
-  local did_execute = false
-  for match in ts_query.iter_prepared_matches(parsed_query, root, 0, start_row, end_row) do
-    locals.recurse_local_nodes(match, function(_, node)
-      if node:type() == 'block' then
-        block_num = block_num + 1
-        local c_row = unpack(vim.api.nvim_win_get_cursor(0)) - 1
-        local s_row, _, e_row, _ = vim.treesitter.get_node_range(node)
-        if c_row >= s_row and c_row <= e_row then
-          M.run({ type = 'block', block = block_num })
-          did_execute = true
-          return
+
+  -- Get the node at the cursor position
+  local node = root:descendant_for_range(row, col, row, col)
+  if not node then
+    return nil
+  end
+
+  -- Traverse up to find the block node
+  local current = node
+  while current do
+    if current:type() == "block" then
+      -- Extract label from the block
+      -- block structure: (identifier) (string_lit) (block_body)
+      local label = nil
+      for child in current:iter_children() do
+        if child:type() == "string_lit" then
+          label = vim.treesitter.get_node_text(child, buf)
+          -- Remove quotes from the label
+          label = label:gsub('"', "")
+          break
         end
       end
-    end)
+      return label
+    end
+    current = current:parent()
   end
-  if not did_execute then
-    print('no block under cursor')
-  end
+
+  return nil
 end
 
 function M.file()
-  M.run({ type = 'file' })
+  M.run({ type = "file" })
 end
 
 function M.block(args)
   local label = args.fargs[1]
   if label ~= nil then
-    M.run({ type = 'label', label = label })
+    M.run({ type = "label", label = label })
     return
   end
   M.block_under_cursor()
 end
 
 function M.run_cmd(args)
-  local cmd = { 'rest', '-nc', '-f', vim.fn.expand('%') }
+  local cmd = { "rest", "-nc", "-f", vim.fn.expand("%") }
 
   local add_args = {
-    ['block'] = function(a)
-      table.insert(cmd, '-b')
+    ["block"] = function(a)
+      table.insert(cmd, "-b")
       table.insert(cmd, a.block)
     end,
-    ['label'] = function(a)
-      table.insert(cmd, '-l')
+    ["label"] = function(a)
+      table.insert(cmd, "-l")
       table.insert(cmd, a.label)
     end,
-    ['file'] = function() end,
-    ['export'] = function(a)
-      table.insert(cmd, '-e')
+    ["file"] = function() end,
+    ["export"] = function(a)
+      table.insert(cmd, "-e")
       table.insert(cmd, a.language)
       if a.client then
-        table.insert(cmd, '-c')
+        table.insert(cmd, "-c")
       end
     end,
-    ['list-languages'] = function()
-      table.insert(cmd, '-e')
-      table.insert(cmd, 'ls')
+    ["list-languages"] = function()
+      table.insert(cmd, "-e")
+      table.insert(cmd, "ls")
     end,
   }
   add_args[args.type](args)
@@ -145,11 +156,11 @@ function M.run(args)
     return
   end
   ui.show_result(result, {
-    ['Y'] = {
-      description = 'Copy result',
+    ["Y"] = {
+      description = "Copy result",
       callback = function()
-        vim.fn.setreg('+', result)
-        vim.notify('Copied to clipboard')
+        vim.fn.setreg("+", result)
+        vim.notify("Copied to clipboard")
       end,
     },
   })
@@ -157,15 +168,15 @@ end
 
 function M.export_language(lang)
   local client = M.run_cmd({
-    type = 'export',
+    type = "export",
     language = lang,
     client = true,
   })
   if not client then
     return
   end
-  vim.fn.setreg('+', client)
-  vim.notify('copied to clipboard')
+  vim.fn.setreg("+", client)
+  vim.notify("copied to clipboard")
 end
 
 function M.export(args)
@@ -173,20 +184,20 @@ function M.export(args)
     M.export_language(args.fargs[1])
     return
   end
-  local result = M.run_cmd({ type = 'list-languages' })
+  local result = M.run_cmd({ type = "list-languages" })
   if not result then
     return
   end
-  local output = vim.split(result, '\n', { plain = true })
+  local output = vim.split(result, "\n", { plain = true })
   -- remove blank entries
   for i, v in ipairs(output) do
-    if v == '' then
+    if v == "" then
       table.remove(output, i)
     end
   end
   vim.ui.select(output, {
-    prompt = 'export to:',
-    prompt_chars = '>',
+    prompt = "export to:",
+    prompt_chars = ">",
   }, function(choice)
     M.export_language(choice)
   end)
