@@ -1,8 +1,10 @@
-local M = {}
+local M = {
+  registered = false,
+}
 
 function M.register_code_actions()
   local has, code_actions = pcall(require, "code-actions")
-  if not has then
+  if not has or M.registered then
     return
   end
   code_actions.add_server({
@@ -21,6 +23,7 @@ function M.register_code_actions()
       },
     },
   })
+  M.registered = true
 end
 
 return M

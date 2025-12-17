@@ -1,10 +1,7 @@
 local M = {
-  surrogate_language = "hcl",
   parsed_query = nil,
 }
-function M.register_ts_query()
-  vim.treesitter.language.register(M.surrogate_language, "rest")
-
+function M.register_ts()
   local query = [[
     (block
       (identifier) @requests (#eq? @requests "request")
@@ -12,7 +9,7 @@ function M.register_ts_query()
     ) @block
   ]]
   local success, parsed_query = pcall(function()
-    return vim.treesitter.query.parse(M.surrogate_language, query)
+    return vim.treesitter.query.parse("hcl", query)
   end)
   if not success then
     error("ts query parse failure" .. parsed_query)
@@ -22,9 +19,11 @@ function M.register_ts_query()
 end
 
 function M.do_labels()
-  local parsers = require("nvim-treesitter.parsers")
-
-  local parser = parsers.get_parser(0, M.surrogate_language)
+  local parser = vim.treesitter.get_parser(0, "hcl")
+  if not parser then
+    error("no hcl parser found")
+    return
+  end
   local root = parser:parse()[1]:root()
   local start_row, _, end_row, _ = root:range()
   local labels = {}
