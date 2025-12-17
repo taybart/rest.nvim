@@ -1,11 +1,11 @@
 local M = {}
 
 function M.register_code_actions()
-  local has_code_actions = pcall(require, "code-actions")
-  if not has_code_actions then
+  local has, code_actions = pcall(require, "code-actions")
+  if not has then
     return
   end
-  require("code-actions").add_server({
+  code_actions.add_server({
     name = "rest.nvim",
     filetypes = { include = { "rest" } },
     -- stylua: ignore

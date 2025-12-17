@@ -2,7 +2,6 @@ local M = {
   surrogate_language = "hcl",
   parsed_query = nil,
 }
-local ui = require("rest.ui")
 function M.register_ts_query()
   vim.treesitter.language.register(M.surrogate_language, "rest")
 
@@ -41,7 +40,8 @@ function M.do_labels()
     vim.notify("no request blocks found", vim.log.levels.WARN)
     return
   end
-  ui.choose({ title = "what should we run?" }, labels, function(label)
+
+  require("rest.ui").choose({ title = "what should we run?" }, labels, function(label)
     if not label then
       return
     end
@@ -155,7 +155,7 @@ function M.run(args)
   if not result then
     return
   end
-  ui.show_result(result, {
+  require("rest.ui").show_result(result, {
     ["Y"] = {
       description = "Copy result",
       callback = function()
