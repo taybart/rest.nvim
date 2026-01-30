@@ -9,8 +9,12 @@ Depends on: [nvim-treesitter/nvim-treesitter](https://github.com/nvim-treesitter
 ```lua
 {
     'taybart/rest.nvim',
-    -- optional dependency that will add code actions in rest files
-    dependencies = { 'taybart/code-actions.nvim' },
+    dependencies = { 
+        -- used for syntax highlighting, parser will be installed if not available (hcl)
+        'nvim-treesitter/nvim-treesitter', 
+        -- optional dependency that will add code actions in rest files
+        'taybart/code-actions.nvim',
+    },
     opts = {
         -- add no wrap to rest files
         no_wrap = true,
