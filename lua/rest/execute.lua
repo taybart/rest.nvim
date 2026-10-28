@@ -108,7 +108,7 @@ function M.block(args)
 end
 
 function M.run_cmd(args)
-  local cmd = { 'rest', '-nc', '-f', vim.fn.expand('%') }
+  local cmd = { 'rest', '--flags', '-nc', '-f', vim.fn.expand('%') }
 
   local add_args = {
     ['block'] = function(a)
