@@ -22,6 +22,10 @@ Depends on: [nvim-treesitter/nvim-treesitter](https://github.com/nvim-treesitter
         -- you do not need to set this to false if you do 
         -- not add code actions as a dependency
         code_actions = true,
+        -- the .rest file icon, registered w/ nvim-web-devicons if it's
+        -- installed (so pickers like snacks, statuslines, and file trees show
+        -- it), false to not register one
+        icon = { glyph = "󰒲", color = "#26afe5", cterm_color = "38" },
     },
 }
 ```
