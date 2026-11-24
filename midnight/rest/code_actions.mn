@@ -1,0 +1,25 @@
+module registered = false
+
+module function register_code_actions() {
+  local has, code_actions = pcall(require, 'code-actions')
+  if !has || registered {
+    return
+  }
+  code_actions.add_server({
+    name = 'rest.nvim',
+    filetypes = { include = { 'rest' } },
+    -- stylua: ignore
+    actions = {
+      {
+        command = 'Execute block under cursor',
+        show = () -> require('rest/execute').block_label_under_cursor() != nil,
+        fn = () -> require('rest/execute').block_under_cursor(),
+      },
+      {
+        command = 'Pick label to run',
+        fn = () -> require('rest/execute').do_labels(),
+      },
+    },
+  })
+  registered = true
+}

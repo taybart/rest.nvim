@@ -1,0 +1,219 @@
+module parsed_query = nil
+
+module function register_ts() {
+  local query = [[
+    (block
+      (identifier) @kind (#any-of? @kind "request" "test")
+      (string_lit) @label
+    ) @block
+  ]]
+  local ok, parsed_query = pcall(
+    () -> vim.treesitter.query.parse('hcl', query)
+  )
+  if !ok {
+    error('ts query parse failure' .. parsed_query)
+    return nil
+  }
+  module.parsed_query = parsed_query
+}
+
+module function do_labels() {
+  local parser = vim.treesitter.get_parser(0, 'hcl')
+  if !parser {
+    error('no hcl parser found')
+    return
+  }
+  local root = parser:parse()[1]:root()
+  local start_row, _, end_row, _ = root:range()
+  -- tests are shown as "test: <name>", targets maps what's shown to what runs
+  local labels = {}
+  local targets = {}
+  local kind = nil
+  for i, node in parsed_query:iter_captures(root, 0, start_row, end_row) {
+    local name = parsed_query.captures[i]
+    if name == 'kind' {
+      kind = vim.treesitter.get_node_text(node, 0)
+    } elseif name == 'label' {
+      local label = vim.treesitter.get_node_text(node, 0)
+      label = label:gsub('"(.*)"', '%1') -- remove quotes
+      local shown = label
+      if kind == 'test' { shown = 'test: ' .. label }
+      table.insert(labels, shown)
+      targets[shown] = target(kind, label)
+    }
+  }
+  if #labels == 0 {
+    vim.notify('no request or test blocks found', vim.log.levels.WARN)
+    return
+  }
+
+  require('rest.ui').choose({ title = 'what should we run?' }, labels, (shown) -> {
+    if !shown { return }
+    run(targets[shown])
+  })
+}
+
+--- what run() takes to run a request or test block
+module function target(kind, label) {
+  if kind == 'test' {
+    return { type = 'test', label = label }
+  }
+  return { type = 'label', label = label }
+}
+
+module function block_under_cursor() {
+  local t = target_under_cursor()
+  if t {
+    run(t)
+    return
+  }
+  print('no block under cursor')
+}
+
+module function block_label_under_cursor() {
+  local t = target_under_cursor()
+  return t && t.label
+}
+
+--- the request or test block the cursor is in (skipping blocks nested in
+--- it, ex. expect), as a run() target
+module function target_under_cursor() {
+  local buf = vim.api.nvim_get_current_buf()
+  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+  row = row - 1 -- TreeSitter uses 0-based row indexing
+
+  -- Get the root node of the buffer
+  local parser = vim.treesitter.get_parser(buf, 'hcl')
+  if !parser {
+    error('No parser available for hcl')
+    return nil
+  }
+
+  local root = parser:parse()[1]:root()
+
+  -- Get the node at the cursor position
+  local node = root:descendant_for_range(row, col, row, col)
+  if !node { return nil }
+
+  -- Traverse up to find the request/test block
+  local current = node
+  while current {
+    if current:type() == 'block' {
+      -- block structure: (identifier) (string_lit) (block_body)
+      local kind = nil
+      local label = nil
+      for child in current:iter_children() {
+        if child:type() == 'identifier' && !kind {
+          kind = vim.treesitter.get_node_text(child, buf)
+        } elseif child:type() == 'string_lit' {
+          label = vim.treesitter.get_node_text(child, buf)
+          -- Remove quotes from the label
+          label = label:gsub('"', '')
+          break
+        }
+      }
+      if label && (kind == 'request' || kind == 'test') {
+        return target(kind, label)
+      }
+    }
+    current = current:parent()
+  }
+
+  return nil
+}
+
+module function file() { run({ type = 'file' }) }
+
+module function block(args) {
+  local label = args.fargs[1]
+  if label != nil {
+    run({ type = 'label', label = label })
+    return
+  }
+  block_under_cursor()
+}
+
+module function run_cmd(args) {
+  local cmd = { 'rest', '--flags', '-nc', '-f', vim.fn.expand('%') }
+
+  local add_args = {
+    ['block'] = (a) -> {
+      table.insert(cmd, '-b')
+      table.insert(cmd, a.block)
+    },
+    ['label'] = (a) -> {
+      table.insert(cmd, '-l')
+      table.insert(cmd, a.label)
+    },
+    ['test'] = (a) -> {
+      table.insert(cmd, '-T')
+      table.insert(cmd, a.label)
+    },
+    ['file'] = () -> {},
+    ['export'] = (a) -> {
+      table.insert(cmd, '-e')
+      table.insert(cmd, a.language)
+      if a.client { table.insert(cmd, '-c') }
+    },
+    ['list-languages'] = () -> {
+      table.insert(cmd, '-e')
+      table.insert(cmd, 'ls')
+    },
+  }
+  add_args[args.type](args)
+
+  --- @diagnostic disable-next-line: undefined-field
+  local result = vim.system(cmd, { text = true }):wait()
+  -- a failing test exits 1, its output says what failed
+  if args.type == 'test' && result.stdout != '' {
+    return result.stdout .. result.stderr
+  }
+  if result.code != 0 {
+    vim.notify(result.stderr .. result.stdout, vim.log.levels.ERROR)
+    return
+  }
+  return result.stdout
+}
+
+module function run(args) {
+  local result = run_cmd(args)
+  if !result { return }
+  require('rest.ui').show_result(result, {
+    ['Y'] = {
+      description = 'Copy result',
+      callback = () -> {
+        vim.fn.setreg('+', result)
+        vim.notify('Copied to clipboard')
+      },
+    },
+  })
+}
+
+module function export_language(lang) {
+  local client = run_cmd({
+    type = 'export',
+    language = lang,
+    client = true,
+  })
+  if !client { return }
+  vim.fn.setreg('+', client)
+  vim.notify('copied to clipboard')
+}
+
+module function export(args) {
+  if args.fargs[1] {
+    export_language(args.fargs[1])
+    return
+  }
+  local result = run_cmd({ type = 'list-languages' })
+  if !result { return }
+  local output = vim.split(result, '\n', { plain = true })
+  -- remove blank entries
+  for i, v in ipairs(output) {
+    if v == '' { table.remove(output, i) }
+  }
+  vim.ui.select(output, {
+    prompt = 'export to:',
+    prompt_chars = '>',
+  }, (choice) -> export_language(choice))
+}

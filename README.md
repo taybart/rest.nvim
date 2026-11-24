@@ -32,6 +32,8 @@ Depends on: [nvim-treesitter/nvim-treesitter](https://github.com/nvim-treesitter
 
 ### Commands
 
+`request` and `test` blocks both run: a test block runs with `rest -T`.
+
 ```vim
 :ExecuteBlock [block number]
 :ExecuteBlockUnderCursor
@@ -44,7 +46,7 @@ Depends on: [nvim-treesitter/nvim-treesitter](https://github.com/nvim-treesitter
 the default keymaps are:
 
 ```lua
-      vim.keymap.set('n', '<c-l>', execute.do_labels, {}) -- pick
+      vim.keymap.set('n', '<c-l>', execute.do_labels, {}) -- pick a request or test
       vim.keymap.set('n', '<c-e>', execute.block_under_cursor, {})
       vim.keymap.set('n', '<c-t>', execute.file, {})
 ```
